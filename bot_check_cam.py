@@ -4,7 +4,6 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from webdriver_manager.chrome import ChromeDriverManager
 import pandas as pd
 import time
 
@@ -28,7 +27,6 @@ st.markdown("""
     }
     .stButton>button:hover {
         background-color: #2563eb;
-        box-shadow: 0 6px 12px rgba(37, 99, 235, 0.3);
     }
     
     /* ปรับแต่งการแสดงผลบนสมาร์ทโฟน */
@@ -40,7 +38,7 @@ st.markdown("""
             font-size: 1.6rem !important;
         }
         .stTextInput>div>div>input {
-            font-size: 16px !important; /* ป้องกันไม่ให้หน้าจอ iOS ซูมเข้าอัตโนมัติเมื่อกดพิมพ์ */
+            font-size: 16px !important;
         }
     }
     
@@ -66,13 +64,13 @@ st.markdown("""
             </svg>
             WONDER AI
         </h1>
-        <p style='margin:8px 0 0 0; font-size:15px; opacity:0.85; color: white;'>ระบบตรวจสอบสถานะกล้องวงจรปิดอัตโนมัติ (เวอร์ชันรองรับหลายสาขา)</p>
+        <p style='margin:8px 0 0 0; font-size:15px; opacity:0.85; color: white;'>ระบบตรวจสอบสถานะกล้องวงจรปิดอัตโนมัติ (Cloud Production v4.0)</p>
     </div>
     """, unsafe_allow_html=True)
 
 st.markdown("### ⚙️ ตั้งค่าการเชื่อมต่อระบบ")
 
-# โซนรับข้อมูลจากผู้ใช้แบบค่าว่าง (ลบช่อง Prefix ออกไปให้ระบบตรวจหา Auto เรียบร้อยครับ)
+# โซนรับข้อมูลจากผู้ใช้แบบค่าว่าง (Empty Values) โล่งสะอาดตา
 col1, col2 = st.columns(2)
 with col1:
     web_url = st.text_input("🔗 วางลิงก์ URL ระบบของเว็บ:", value="")
@@ -83,23 +81,25 @@ with col2:
 
 st.markdown("---")
 
-if st.button("🚀 เริ่มทำงาน (เปิดระบบ Chrome)", type="primary"):
+if st.button("🚀 เริ่มทำงาน (เปิดระบบคลาวด์อัจฉริยะ)", type="primary"):
     if not web_url or not username or not username_password:
         st.warning("⚠️ กรุณากรอกข้อมูลระบบให้ครบถ้วนทุกช่องก่อนเริ่มทำงานครับ")
     else:
-        with st.spinner('กำลังสตาร์ทระบบ และเปิดเบราว์เซอร์ Chrome...'):
+        with st.spinner('ระบบ Wonder AI กำลังประมวลผลความปลอดภัยบนเซิร์ฟเวอร์คลาวด์...'):
             
+            # 🎯 ไฮไลต์เด็ด: ตั้งค่าควบคุม Chrome ให้แอบทำงานเบื้องหลังเงียบ ๆ (Headless Mode) เหมาะกับเซิร์ฟเวอร์คลาวด์
             options = webdriver.ChromeOptions()
+            options.add_argument('--headless=new')
             options.add_argument('--no-sandbox')
             options.add_argument('--disable-dev-shm-usage')
+            options.add_argument('--disable-gpu')
             
-            driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+            driver = webdriver.Chrome(options=options)
             wait = WebDriverWait(driver, 30) 
             
             try:
-                # วิ่งไปที่ URL ระบบที่กรอกหน้าเว็บ
                 driver.get(web_url)
-                time.sleep(3) 
+                time.sleep(4) 
                 
                 # 1. ขั้นตอนการล็อกอิน
                 try:
@@ -110,12 +110,12 @@ if st.button("🚀 เริ่มทำงาน (เปิดระบบ Chro
                     password_field.send_keys(username_password)
                     password_field.submit()
                     
-                    st.info("🔑 ระบบทำการกรอกรหัสผ่านและล็อกอินเข้าสู่ระบบแล้ว...")
+                    st.info("🔑 ระบบทำการล็อกอินเข้าสู่ศูนย์กลางเรียบร้อยแล้ว...")
                     time.sleep(6) 
                 except Exception as e:
-                    st.warning("ℹ️ ระบบเข้าสู่หน้าเว็บหลักโดยตรง (Session เดิมยังทำงานอยู่)")
+                    st.warning("ℹ️ ระบบเข้าสู่หน้าต่างหลักโดยตรง")
 
-                # 🏢 2. ระบบตรวจหาชื่อสาขาปัจจุบันที่กำลังใช้งานอยู่แบบอัตโนมัติ (Auto-Detect)
+                # 🏢 2. ระบบตรวจหาชื่อสาขาปัจจุบันอัตโนมัติ (Auto-Detect)
                 try:
                     store_element = wait.until(EC.presence_of_element_located((By.XPATH, 
                         "//*[text()='Camera Registration']/preceding::*[contains(@class, 'select') or @role='combobox' or @type='button'][1] | "
@@ -125,39 +125,36 @@ if st.button("🚀 เริ่มทำงาน (เปิดระบบ Chro
                     detected_store = store_element.text.strip().replace('\n', ' ')
                     if detected_store:
                         st.success(f"🏢 ระบบตรวจพบสาขาปัจจุบันอัตโนมัติ: **{detected_store}**")
-                except Exception as store_err:
-                    st.info("ℹ️ ระบบข้ามการอ่านชื่อสาขา แต่จะดำเนินการตรวจเช็กกล้องบนหน้าจอต่อทันที")
+                except:
+                    pass
 
                 # 3. ระบบคลิกเลือกเมนูที่ (2) Camera dewarping ด้านซ้าย
-                st.info("🔄 ระบบกำลังขยับไปคลิกเมนูหมายเลข (2) Camera dewarping...")
+                st.info("🔄 ระบบกำลังเข้าเมนู Camera dewarping...")
                 try:
                     dewarping_menu = wait.until(EC.element_to_be_clickable((By.XPATH, "//*[contains(text(), 'Camera dewarping') or contains(text(), 'Camera Dewarping')]")))
                     driver.execute_script("arguments[0].click();", dewarping_menu)
-                    st.success("🎯 ระบบเปลี่ยนเข้าสู่หน้า Camera dewarping เรียบร้อยแล้ว!")
                     time.sleep(6) 
                 except Exception as menu_err:
-                    st.error(f"❌ หาปุ่มเมนู 'Camera dewarping' ไม่เจอ: {menu_err}")
+                    st.error("❌ ไม่สามารถเข้าสู่เมนูตรวจสอบภาพได้")
                     driver.quit()
+                    st.stop()
 
-                # 4. ระบบคลิกปุ่ม Refresh (ลูกศรหมวนวน) ข้างๆ หัวข้อ "Camera"
-                st.info("🔄 ระบบกำลังคลิกปุ่ม Refresh เพื่อดึงภาพ Snapshot ล่าสุด...")
+                # 4. ระบบคลิกปุ่ม Refresh เพื่ออัปเดตสถานะภาพกล้องล่าสุด
                 try:
                     refresh_btn = wait.until(EC.element_to_be_clickable((By.XPATH, "//*[text()='Camera']/..//button | //*[text()='Camera']/following-sibling::*[local-name()='svg' or @role='button'] | //*[text()='Camera']/..//*[local-name()='svg']")))
                     driver.execute_script("arguments[0].click();", refresh_btn)
-                    st.success("✅ ระบบกดปุ่ม Refresh กล้องเรียบร้อยแล้ว! กำลังรอระบบโหลดภาพ Snapshot ใหม่...")
+                    st.success("✅ ระบบกดปุ่ม Refresh เพื่ออัปเดต Snapshot เรียบร้อยแล้ว!")
                     time.sleep(8) 
-                except Exception as refresh_err:
-                    st.warning(f"⚠️ ไม่สามารถกดปุ่ม Refresh ได้ จะข้ามไปไล่เช็กกล้องต่อ: {refresh_err}")
+                except:
+                    pass
 
-                # 5. 🎯 ขั้นตอนใหม่: ระบบตรวจหากล้องและดึงรายชื่ออัตโนมัติ (Camera Auto-Detect)
-                st.info("📸 ระบบกำลังสแกนและวิเคราะห์รายชื่อกล้องวงจรปิดบนหน้าจออัตโนมัติ...")
+                # 5. ระบบตรวจหากล้องและวิเคราะห์ชื่อกล้องอัตโนมัติ (Camera Auto-Detect)
+                st.info("📸 ระบบกำลังวิเคราะห์รายชื่อกล้องวงจรปิดบนหน้าจออัตโนมัติ...")
                 try:
-                    # รอจนกว่าจะมีชื่อกล้องที่มีเครื่องหมายเครื่องหมายขีดล่างปรากฏขึ้นบนจอซ้ายมือ
                     wait.until(EC.presence_of_element_located((By.XPATH, "//*[contains(text(), '_')]")))
                 except:
                     time.sleep(4)
 
-                # ดึงองค์ประกอบทั้งหมดที่มีเครื่องหมาย _ แล้วกรองเฉพาะชื่อกล้องจริง ๆ ออกมา
                 camera_elements = driver.find_elements(By.XPATH, "//*[contains(text(), '_')]")
                 camera_names = []
                 for elem in camera_elements:
@@ -165,25 +162,22 @@ if st.button("🚀 เริ่มทำงาน (เปิดระบบ Chro
                         txt = elem.text.strip()
                         if txt and '_' in txt:
                             parts = txt.split('_')
-                            if parts[-1].isdigit():  # ตรวจจับแพทเทิร์นที่เป็นตัวเลขต่อท้าย เช่น Sangtong_1, Yongsanguan_14
+                            if parts[-1].isdigit():
                                 camera_names.append(txt)
                     except:
                         continue
                 
-                # เคลียร์ค่าซ้ำ
                 camera_names = list(set(camera_names))
-                
-                # จัดเรียงลำดับตัวเลขกล้องให้อัตโนมัติ (1 -> 2 -> 10)
                 try:
                     camera_names.sort(key=lambda x: int(x.split('_')[-1]) if '_' in x and x.split('_')[-1].isdigit() else 0)
                 except:
                     camera_names.sort()
                 
                 if not camera_names:
-                    st.error("❌ ระบบไม่พบรายชื่อกล้องวงจรปิดบนหน้าจอ กรุณาตรวจสอบหน้าต่างเบราว์เซอร์ Chrome ของระบบ")
+                    st.error("❌ ระบบไม่พบรายชื่อกล้องวงจรปิดบนหน้าจอนี้")
                     driver.quit()
                 else:
-                    st.success(f"🎯 ระบบสแกนพบกล้องวงจรปิดอัตโนมัติจำนวนทั้งหมด {len(camera_names)} ตัว")
+                    st.success(f"🎯 ระบบสแกนพบกล้องอัตโนมัติทั้งหมดจำนวน {len(camera_names)} ตัว")
                     
                     results = []
                     progress_bar = st.progress(0)
@@ -196,14 +190,10 @@ if st.button("🚀 เริ่มทำงาน (เปิดระบบ Chro
                         try:
                             target_click = driver.find_element(By.XPATH, f"//*[text()='{name}']")
                             driver.execute_script("arguments[0].click();", target_click)
-                            
-                            # หน่วงเวลา 6 วินาที ให้ภาพ Snapshot โหลดขึ้นมาโชว์เต็มตาก่อนตรวจสอบ
                             time.sleep(6) 
                             
-                            # ดึงซอร์สโค้ดหน้าเว็บ ณ วินาทีนั้นมาประมวลผลสถานะ
                             main_display = driver.page_source.lower()
                             
-                            # ตรวจสอบคีย์เวิร์ดพังระดับระบบจริงๆ เท่านั้น
                             if "connection failed" in main_display or "not found" in main_display:
                                 status = "🔴 Offline"
                                 detail = "เซิร์ฟเวอร์กล้องปลายทางแจ้งเตือนการเชื่อมต่อล้มเหลว"
@@ -213,14 +203,13 @@ if st.button("🚀 เริ่มทำงาน (เปิดระบบ Chro
                                 
                         except Exception as click_err:
                             status = "🔴 Error"
-                            detail = f"ระบบเข้าไม่ถึงกล้องตัวนี้ หรือเกิดปัญหาตอนกด: {click_err}"
+                            detail = "ระบบเข้าไม่ถึงตัวกล้องตัวนี้"
                         
                         results.append({
                             "ชื่อกล้องวงจรปิด": name,
                             "สเตตัสภาพล่าสุด": status,
                             "รายละเอียดปัญหา": detail
                         })
-                        
                         progress_bar.progress((idx + 1) / len(camera_names))
                     
                     status_text.success("🎉 ระบบทำงานตรวจเช็กเรียบร้อยครบทุกขั้นตอน!")
